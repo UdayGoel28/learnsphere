@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Materials | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item active"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Study Materials & Resources</h2>
+            <p>Upload and manage lecture notes, slides, PDFs, and external references</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Add Material</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search title or type..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <select id="course-filter" class="form-control" style="width: auto;" onchange="handleFilterChange(this.value)">
+                <option value="">All Courses</option>
+              </select>
+              <span id="material-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Material Title</th>
+                  <th>Type</th>
+                  <th>Course</th>
+                  <th>Resource Link</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="materials-table-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading study materials...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Material Form Dialog -->
+  <dialog id="material-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="material-modal-title">Add Study Material</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('material-modal').close()">✕</button>
+      </div>
+      <form id="material-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="material-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="course-select">Course <span class="required">*</span></label>
+            <select id="course-select" class="form-control" required>
+              <option value="">-- Select Course --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="material-title">Title <span class="required">*</span></label>
+            <input type="text" id="material-title" class="form-control" required placeholder="e.g. Relational Algebra Cheatsheet" maxlength="150">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="material-type">Type (Optional)</label>
+            <input type="text" id="material-type" class="form-control" placeholder="e.g. PDF, Lecture Slide, Video Link" maxlength="50">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="resource-link">Resource URL / Link</label>
+            <input type="url" id="resource-link" class="form-control" placeholder="https://..." maxlength="500">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('material-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="material-submit-btn">Save Material</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let courses = [];
+
+    async function loadCourses() {
+      try {
+        const res = await apiFetch('/api/courses');
+        if (res.success) {
+          courses = res.data;
+          const options = courses.map(c => `<option value="${c.course_id}">${escapeHtml(c.course_name)}</option>`).join('');
+          document.getElementById('course-select').innerHTML = '<option value="">-- Select Course --</option>' + options;
+          document.getElementById('course-filter').innerHTML = '<option value="">All Courses</option>' + options;
+        }
+      } catch (e) {}
+    }
+
+    async function loadMaterials(searchQuery = '', courseFilter = '') {
+      try {
+        let url = '/api/study-materials?';
+        if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
+        if (courseFilter) url += `course_id=${encodeURIComponent(courseFilter)}&`;
+
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderMaterials(res.data);
+          document.getElementById('material-count-badge').textContent = `${res.count} item(s)`;
+        }
+      } catch (err) {
+        document.getElementById('materials-table-body').innerHTML = `
+          <tr><td colspan="6" style="text-align: center; color: var(--danger);">Failed to load materials.</td></tr>
+        `;
+      }
+    }
+
+    function renderMaterials(items) {
+      const tbody = document.getElementById('materials-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">📁</div>
+                <h3>No Materials Found</h3>
+                <p>Upload study notes, links, and documents for enrolled students.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Add Material</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(m => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${m.material_id}</span></td>
+          <td><strong>${escapeHtml(m.material_title)}</strong></td>
+          <td>${m.material_type ? `<span class="badge badge-neutral">${escapeHtml(m.material_type)}</span>` : '-'}</td>
+          <td><span class="badge badge-blue">${escapeHtml(m.course_name)}</span></td>
+          <td>
+            ${m.resource_link 
+              ? `<a href="${escapeHtml(m.resource_link)}" target="_blank" rel="noopener" style="color:var(--primary); text-decoration: underline; font-size:0.85rem;">Open Link ↗</a>` 
+              : '<span style="color:var(--text-muted); font-size:0.8rem;">None</span>'}
+          </td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="Edit Material" onclick="openEditModal(${m.material_id})">✏️</button>
+              <button class="btn-icon delete" title="Delete Material" onclick="handleDelete(${m.material_id}, '${escapeHtml(m.material_title)}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      const courseVal = document.getElementById('course-filter').value;
+      loadMaterials(val, courseVal);
+    }, 300);
+
+    function handleFilterChange(val) {
+      const searchVal = document.getElementById('search-input').value;
+      loadMaterials(searchVal, val);
+    }
+
+    function openCreateModal() {
+      document.getElementById('material-modal-title').textContent = 'Add Study Material';
+      document.getElementById('material-id').value = '';
+      document.getElementById('course-select').value = document.getElementById('course-filter').value || '';
+      document.getElementById('material-title').value = '';
+      document.getElementById('material-type').value = '';
+      document.getElementById('resource-link').value = '';
+      document.getElementById('material-submit-btn').textContent = 'Add Material';
+      document.getElementById('material-modal').showModal();
+    }
+
+    async function openEditModal(matId) {
+      try {
+        const res = await apiFetch(`/api/study-materials/${matId}`);
+        if (res.success) {
+          const m = res.data;
+          document.getElementById('material-modal-title').textContent = `Edit Material #${m.material_id}`;
+          document.getElementById('material-id').value = m.material_id;
+          document.getElementById('course-select').value = m.course_id;
+          document.getElementById('material-title').value = m.material_title;
+          document.getElementById('material-type').value = m.material_type || '';
+          document.getElementById('resource-link').value = m.resource_link || '';
+          document.getElementById('material-submit-btn').textContent = 'Update Material';
+          document.getElementById('material-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('material-id').value;
+      const payload = {
+        course_id: parseInt(document.getElementById('course-select').value, 10),
+        material_title: document.getElementById('material-title').value.trim(),
+        material_type: document.getElementById('material-type').value.trim() || null,
+        resource_link: document.getElementById('resource-link').value.trim() || null,
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/study-materials/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Study material updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/study-materials', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Study material added successfully.', 'success');
+        }
+
+        document.getElementById('material-modal').close();
+        loadMaterials('', document.getElementById('course-filter').value);
+      } catch (err) {}
+    }
+
+    function handleDelete(matId, title) {
+      confirmAction({
+        title: 'Delete Material',
+        message: `Are you sure you want to delete material <strong>${title}</strong> (#${matId})?`,
+        confirmText: 'Delete Material',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/study-materials/${matId}`, { method: 'DELETE' });
+            showToast(`Material #${matId} removed successfully.`, 'success');
+            loadMaterials('', document.getElementById('course-filter').value);
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCourses();
+      loadMaterials();
+    });
+  </script>
+</body>
+</html>

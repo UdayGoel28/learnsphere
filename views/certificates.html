@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificates | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Certificate Printable Preview Styling */
+    .cert-frame {
+      border: 8px double #1e3a8a;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      padding: 2.5rem;
+      text-align: center;
+      position: relative;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 20px rgba(30, 58, 138, 0.05);
+    }
+    .cert-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #1e3a8a;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+    }
+    .cert-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.5rem;
+    }
+    .cert-recipient {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #0f172a;
+      border-bottom: 2px solid #3b82f6;
+      display: inline-block;
+      padding: 0 2rem 0.25rem;
+      margin-bottom: 1.25rem;
+      font-family: Georgia, serif;
+    }
+    .cert-body {
+      font-size: 1rem;
+      color: #475569;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .cert-course {
+      font-weight: 700;
+      color: #1d4ed8;
+      font-size: 1.2rem;
+    }
+    .cert-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e2e8f0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item active"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Course Completion Certificates</h2>
+            <p>Issue, inspect, print, and verify graduation credentials</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Issue Certificate</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search student or course..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <span id="cert-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Cert ID</th>
+                  <th>Student Name</th>
+                  <th>Certified Course</th>
+                  <th>Faculty In-Charge</th>
+                  <th>Issue Date</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="certificates-table-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading certificates...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Issue Certificate Form Dialog -->
+  <dialog id="certificate-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="cert-modal-title">Issue Course Certificate</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('certificate-modal').close()">✕</button>
+      </div>
+      <form id="certificate-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="cert-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="std-select">Graduating Student <span class="required">*</span></label>
+            <select id="std-select" class="form-control" required>
+              <option value="">-- Select Student --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="course-select">Completed Course <span class="required">*</span></label>
+            <select id="course-select" class="form-control" required>
+              <option value="">-- Select Course --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="issue-date">Date of Issuance <span class="required">*</span></label>
+            <input type="date" id="issue-date" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('certificate-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="cert-submit-btn">Issue Certificate</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Certificate View & Print Modal -->
+  <dialog id="view-cert-modal" style="max-width: 700px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Certificate of Completion</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('view-cert-modal').close()">✕</button>
+      </div>
+      <div class="modal-body" id="view-cert-body">
+        Loading certificate...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('view-cert-modal').close()">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let students = [];
+    let courses = [];
+
+    async function loadDropdowns() {
+      try {
+        const [stRes, crRes] = await Promise.all([
+          apiFetch('/api/students'),
+          apiFetch('/api/courses')
+        ]);
+        if (stRes.success) {
+          students = stRes.data;
+          document.getElementById('std-select').innerHTML = '<option value="">-- Select Student --</option>' +
+            students.map(s => `<option value="${s.std_id}">${escapeHtml(s.std_name)} (${escapeHtml(s.email)})</option>`).join('');
+        }
+        if (crRes.success) {
+          courses = crRes.data;
+          document.getElementById('course-select').innerHTML = '<option value="">-- Select Course --</option>' +
+            courses.map(c => `<option value="${c.course_id}">${escapeHtml(c.course_name)}</option>`).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function loadCertificates(searchQuery = '') {
+      try {
+        const url = searchQuery ? `/api/certificates?search=${encodeURIComponent(searchQuery)}` : '/api/certificates';
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderCertificates(res.data);
+          document.getElementById('cert-count-badge').textContent = `${res.count} certificate(s)`;
+        }
+      } catch (err) {
+        document.getElementById('certificates-table-body').innerHTML = `
+          <tr><td colspan="6" style="text-align: center; color: var(--danger);">Failed to load certificates.</td></tr>
+        `;
+      }
+    }
+
+    function renderCertificates(items) {
+      const tbody = document.getElementById('certificates-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">🎖️</div>
+                <h3>No Certificates Issued</h3>
+                <p>Issue completion certificates for students who finished course requirements.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Issue Certificate</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(cert => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${cert.certificate_id}</span></td>
+          <td>
+            <strong>${escapeHtml(cert.std_name)}</strong>
+            <br><small style="color:var(--text-muted);">${escapeHtml(cert.student_email)}</small>
+          </td>
+          <td><span class="badge badge-blue">${escapeHtml(cert.course_name)}</span></td>
+          <td>${escapeHtml(cert.instructor_name || 'Department Faculty')}</td>
+          <td>${formatDate(cert.issue_date)}</td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="View & Print Certificate" onclick="openViewModal(${cert.certificate_id})">👁️</button>
+              <button class="btn-icon" title="Edit Certificate" onclick="openEditModal(${cert.certificate_id})">✏️</button>
+              <button class="btn-icon delete" title="Revoke Certificate" onclick="handleDelete(${cert.certificate_id}, '${escapeHtml(cert.std_name)}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      loadCertificates(val);
+    }, 300);
+
+    function openCreateModal() {
+      document.getElementById('cert-modal-title').textContent = 'Issue Course Certificate';
+      document.getElementById('cert-id').value = '';
+      document.getElementById('std-select').value = '';
+      document.getElementById('course-select').value = '';
+      document.getElementById('issue-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('cert-submit-btn').textContent = 'Issue Certificate';
+      document.getElementById('certificate-modal').showModal();
+    }
+
+    async function openEditModal(certId) {
+      try {
+        const res = await apiFetch(`/api/certificates/${certId}`);
+        if (res.success) {
+          const c = res.data;
+          document.getElementById('cert-modal-title').textContent = `Edit Certificate #${c.certificate_id}`;
+          document.getElementById('cert-id').value = c.certificate_id;
+          document.getElementById('std-select').value = c.std_id;
+          document.getElementById('course-select').value = c.course_id;
+          document.getElementById('issue-date').value = new Date(c.issue_date).toISOString().split('T')[0];
+          document.getElementById('cert-submit-btn').textContent = 'Update Certificate';
+          document.getElementById('certificate-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('cert-id').value;
+      const payload = {
+        std_id: parseInt(document.getElementById('std-select').value, 10),
+        course_id: parseInt(document.getElementById('course-select').value, 10),
+        issue_date: document.getElementById('issue-date').value,
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/certificates/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Certificate updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/certificates', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Certificate issued successfully.', 'success');
+        }
+
+        document.getElementById('certificate-modal').close();
+        loadCertificates();
+      } catch (err) {}
+    }
+
+    async function openViewModal(certId) {
+      const modal = document.getElementById('view-cert-modal');
+      const body = document.getElementById('view-cert-body');
+      body.innerHTML = 'Loading certificate preview...';
+      modal.showModal();
+
+      try {
+        const res = await apiFetch(`/api/certificates/${certId}`);
+        if (res.success) {
+          const c = res.data;
+          body.innerHTML = `
+            <div class="cert-frame">
+              <div class="cert-title">LearnSphere Academy</div>
+              <div class="cert-subtitle">Certificate of Course Completion</div>
+              
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">This is proudly presented to</p>
+              <div class="cert-recipient">${escapeHtml(c.std_name)}</div>
+
+              <div class="cert-body">
+                For successfully fulfilling all academic requirements, lessons, and evaluations for the curriculum of
+                <div class="cert-course" style="margin-top: 0.5rem;">${escapeHtml(c.course_name)}</div>
+              </div>
+
+              <div class="cert-footer">
+                <div>
+                  <strong>Issue Date:</strong> ${formatDate(c.issue_date)}<br>
+                  <small>Credential ID: LS-CERT-${c.certificate_id.toString().padStart(6, '0')}</small>
+                </div>
+                <div style="text-align: right;">
+                  <strong style="text-decoration: overline;">${escapeHtml(c.instructor_name || 'Dean of Academics')}</strong><br>
+                  <small>Authorized Instructor</small>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        body.innerHTML = '<p style="color:var(--danger);">Failed to load certificate preview.</p>';
+      }
+    }
+
+    function handleDelete(certId, stdName) {
+      confirmAction({
+        title: 'Revoke Certificate',
+        message: `Are you sure you want to revoke and delete certificate #${certId} for <strong>${stdName}</strong>?`,
+        confirmText: 'Revoke Certificate',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/certificates/${certId}`, { method: 'DELETE' });
+            showToast(`Certificate #${certId} revoked successfully.`, 'success');
+            loadCertificates();
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDropdowns();
+      loadCertificates();
+    });
+  </script>
+</body>
+</html>

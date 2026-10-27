@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluations | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item active"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Faculty Evaluations & Feedback</h2>
+            <p>Review evaluations, grading feedback, and instructor assessments</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Add Evaluation</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search student, assignment, or feedback..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <span id="eval-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Student & Course</th>
+                  <th>Assignment</th>
+                  <th>Marks</th>
+                  <th>Evaluator</th>
+                  <th>Feedback</th>
+                  <th>Date</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="evaluations-table-body">
+                <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Loading evaluations...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Evaluation Form Dialog -->
+  <dialog id="evaluation-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="eval-modal-title">Record Evaluation</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('evaluation-modal').close()">✕</button>
+      </div>
+      <form id="evaluation-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="eval-id">
+          
+          <div class="form-group" id="submission-select-group">
+            <label class="form-label" for="submission-select">Submission <span class="required">*</span></label>
+            <select id="submission-select" class="form-control" required>
+              <option value="">-- Select Submission --</option>
+            </select>
+            <div class="form-help">Only submissions that have not yet been evaluated are shown.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="evaluator-select">Evaluating Instructor</label>
+            <select id="evaluator-select" class="form-control">
+              <option value="">-- No Instructor Assigned --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="eval-date">Evaluation Date</label>
+            <input type="date" id="eval-date" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="eval-feedback">Instructor Feedback</label>
+            <textarea id="eval-feedback" class="form-control" placeholder="Provide constructive feedback for the student..." maxlength="500"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('evaluation-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="eval-submit-btn">Save Evaluation</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let submissions = [];
+    let instructors = [];
+
+    async function loadDropdowns() {
+      try {
+        const [subRes, instRes] = await Promise.all([
+          apiFetch('/api/submissions'),
+          apiFetch('/api/instructors')
+        ]);
+        if (subRes.success) {
+          submissions = subRes.data;
+          // Filter to those without an evaluation or allow selecting all
+          const unEvaluated = submissions.filter(s => !s.evaluation_id);
+          const select = document.getElementById('submission-select');
+          select.innerHTML = '<option value="">-- Select Submission --</option>' +
+            unEvaluated.map(s => `<option value="${s.submission_id}">#${s.submission_id}: ${escapeHtml(s.std_name)} — ${escapeHtml(s.assignment_title)}</option>`).join('');
+        }
+        if (instRes.success) {
+          instructors = instRes.data;
+          document.getElementById('evaluator-select').innerHTML = '<option value="">-- No Instructor Assigned --</option>' +
+            instructors.map(i => `<option value="${i.instructor_id}">${escapeHtml(i.inst_name)} (${escapeHtml(i.qualification || 'Faculty')})</option>`).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function loadEvaluations(searchQuery = '') {
+      try {
+        const url = searchQuery ? `/api/evaluations?search=${encodeURIComponent(searchQuery)}` : '/api/evaluations';
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderEvaluations(res.data);
+          document.getElementById('eval-count-badge').textContent = `${res.count} evaluation(s)`;
+        }
+      } catch (err) {
+        document.getElementById('evaluations-table-body').innerHTML = `
+          <tr><td colspan="8" style="text-align: center; color: var(--danger);">Failed to load evaluations.</td></tr>
+        `;
+      }
+    }
+
+    function renderEvaluations(items) {
+      const tbody = document.getElementById('evaluations-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-state-icon">⭐</div>
+                <h3>No Evaluations Recorded</h3>
+                <p>Provide feedback and grades for submitted assignments.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Add Evaluation</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(ev => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${ev.evaluation_id}</span></td>
+          <td>
+            <strong>${escapeHtml(ev.std_name)}</strong>
+            <br><small style="color:var(--text-muted);">${escapeHtml(ev.course_name)}</small>
+          </td>
+          <td><strong>${escapeHtml(ev.assignment_title)}</strong></td>
+          <td>
+            ${ev.marks_obtained !== null 
+              ? `<span class="badge badge-green">${ev.marks_obtained} / ${ev.total_marks}</span>` 
+              : '<span class="badge badge-amber">Ungraded</span>'}
+          </td>
+          <td>${escapeHtml(ev.instructor_name || 'N/A')}</td>
+          <td><small style="color:var(--text-main);">${escapeHtml(ev.feedback || 'No written feedback')}</small></td>
+          <td>${formatDate(ev.evaluation_date)}</td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="Edit Evaluation" onclick="openEditModal(${ev.evaluation_id})">✏️</button>
+              <button class="btn-icon delete" title="Delete Evaluation" onclick="handleDelete(${ev.evaluation_id})">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      loadEvaluations(val);
+    }, 300);
+
+    function openCreateModal() {
+      loadDropdowns();
+      document.getElementById('eval-modal-title').textContent = 'Record Evaluation';
+      document.getElementById('eval-id').value = '';
+      document.getElementById('submission-select-group').style.display = 'block';
+      document.getElementById('submission-select').disabled = false;
+      document.getElementById('submission-select').value = '';
+      document.getElementById('evaluator-select').value = '';
+      document.getElementById('eval-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('eval-feedback').value = '';
+      document.getElementById('eval-submit-btn').textContent = 'Save Evaluation';
+      document.getElementById('evaluation-modal').showModal();
+    }
+
+    async function openEditModal(evalId) {
+      try {
+        const res = await apiFetch(`/api/evaluations/${evalId}`);
+        if (res.success) {
+          const ev = res.data;
+          document.getElementById('eval-modal-title').textContent = `Edit Evaluation #${ev.evaluation_id}`;
+          document.getElementById('eval-id').value = ev.evaluation_id;
+          
+          // Disable changing submission_id during update to preserve unique constraint
+          const select = document.getElementById('submission-select');
+          select.innerHTML = `<option value="${ev.submission_id}" selected>Submission #${ev.submission_id}: ${escapeHtml(ev.std_name)}</option>`;
+          select.disabled = true;
+
+          document.getElementById('evaluator-select').value = ev.instructor_id || '';
+          document.getElementById('eval-date').value = ev.evaluation_date ? new Date(ev.evaluation_date).toISOString().split('T')[0] : '';
+          document.getElementById('eval-feedback').value = ev.feedback || '';
+          document.getElementById('eval-submit-btn').textContent = 'Update Evaluation';
+          document.getElementById('evaluation-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('eval-id').value;
+      const payload = {
+        submission_id: parseInt(document.getElementById('submission-select').value, 10),
+        instructor_id: document.getElementById('evaluator-select').value ? parseInt(document.getElementById('evaluator-select').value, 10) : null,
+        evaluation_date: document.getElementById('eval-date').value || null,
+        feedback: document.getElementById('eval-feedback').value.trim() || null,
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/evaluations/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Evaluation updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/evaluations', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Evaluation recorded successfully.', 'success');
+        }
+
+        document.getElementById('evaluation-modal').close();
+        loadEvaluations();
+        loadDropdowns();
+      } catch (err) {}
+    }
+
+    function handleDelete(evalId) {
+      confirmAction({
+        title: 'Delete Evaluation',
+        message: `Are you sure you want to delete evaluation record #${evalId}?`,
+        confirmText: 'Delete Evaluation',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/evaluations/${evalId}`, { method: 'DELETE' });
+            showToast(`Evaluation #${evalId} removed successfully.`, 'success');
+            loadEvaluations();
+            loadDropdowns();
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDropdowns();
+      loadEvaluations();
+    });
+  </script>
+</body>
+</html>

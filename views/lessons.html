@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lessons | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item active"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Course Lessons</h2>
+            <p>Organize chapters, topics, and syllabus modules across all courses</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Add Lesson</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search lesson title or course..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <select id="course-filter" class="form-control" style="width: auto;" onchange="handleFilterChange(this.value)">
+                <option value="">All Courses</option>
+              </select>
+              <span id="lesson-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Lesson ID</th>
+                  <th>Lesson Title</th>
+                  <th>Course</th>
+                  <th>Instructor</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="lessons-table-body">
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading lessons...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Lesson Form Dialog -->
+  <dialog id="lesson-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="lesson-modal-title">Add Lesson</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('lesson-modal').close()">✕</button>
+      </div>
+      <form id="lesson-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="lesson-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="course-select">Course <span class="required">*</span></label>
+            <select id="course-select" class="form-control" required>
+              <option value="">-- Select Course --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lesson-title">Lesson Title <span class="required">*</span></label>
+            <input type="text" id="lesson-title" class="form-control" required placeholder="e.g. Introduction to Normalization (1NF, 2NF, 3NF)" maxlength="150">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('lesson-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="lesson-submit-btn">Save Lesson</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let courses = [];
+
+    async function loadCourses() {
+      try {
+        const res = await apiFetch('/api/courses');
+        if (res.success) {
+          courses = res.data;
+          const options = courses.map(c => `<option value="${c.course_id}">${escapeHtml(c.course_name)}</option>`).join('');
+          document.getElementById('course-select').innerHTML = '<option value="">-- Select Course --</option>' + options;
+          document.getElementById('course-filter').innerHTML = '<option value="">All Courses</option>' + options;
+        }
+      } catch (e) {}
+    }
+
+    async function loadLessons(searchQuery = '', courseFilter = '') {
+      try {
+        let url = '/api/lessons?';
+        if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
+        if (courseFilter) url += `course_id=${encodeURIComponent(courseFilter)}&`;
+
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderLessons(res.data);
+          document.getElementById('lesson-count-badge').textContent = `${res.count} lesson(s)`;
+        }
+      } catch (err) {
+        document.getElementById('lessons-table-body').innerHTML = `
+          <tr><td colspan="5" style="text-align: center; color: var(--danger);">Failed to load lessons.</td></tr>
+        `;
+      }
+    }
+
+    function renderLessons(items) {
+      const tbody = document.getElementById('lessons-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">
+                <div class="empty-state-icon">📖</div>
+                <h3>No Lessons Found</h3>
+                <p>Add lessons to structure the learning path for your students.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Add Lesson</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(l => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${l.lesson_id}</span></td>
+          <td><strong>${escapeHtml(l.lesson_title)}</strong></td>
+          <td><span class="badge badge-blue">${escapeHtml(l.course_name)}</span></td>
+          <td>${escapeHtml(l.instructor_name || 'N/A')}</td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="Edit Lesson" onclick="openEditModal(${l.lesson_id})">✏️</button>
+              <button class="btn-icon delete" title="Delete Lesson" onclick="handleDelete(${l.lesson_id}, '${escapeHtml(l.lesson_title)}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      const courseVal = document.getElementById('course-filter').value;
+      loadLessons(val, courseVal);
+    }, 300);
+
+    function handleFilterChange(val) {
+      const searchVal = document.getElementById('search-input').value;
+      loadLessons(searchVal, val);
+    }
+
+    function openCreateModal() {
+      document.getElementById('lesson-modal-title').textContent = 'Add Lesson';
+      document.getElementById('lesson-id').value = '';
+      document.getElementById('course-select').value = document.getElementById('course-filter').value || '';
+      document.getElementById('lesson-title').value = '';
+      document.getElementById('lesson-submit-btn').textContent = 'Create Lesson';
+      document.getElementById('lesson-modal').showModal();
+    }
+
+    async function openEditModal(lessonId) {
+      try {
+        const res = await apiFetch(`/api/lessons/${lessonId}`);
+        if (res.success) {
+          const l = res.data;
+          document.getElementById('lesson-modal-title').textContent = `Edit Lesson #${l.lesson_id}`;
+          document.getElementById('lesson-id').value = l.lesson_id;
+          document.getElementById('course-select').value = l.course_id;
+          document.getElementById('lesson-title').value = l.lesson_title;
+          document.getElementById('lesson-submit-btn').textContent = 'Update Lesson';
+          document.getElementById('lesson-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('lesson-id').value;
+      const payload = {
+        course_id: parseInt(document.getElementById('course-select').value, 10),
+        lesson_title: document.getElementById('lesson-title').value.trim(),
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/lessons/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Lesson updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/lessons', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Lesson created successfully.', 'success');
+        }
+
+        document.getElementById('lesson-modal').close();
+        loadLessons('', document.getElementById('course-filter').value);
+      } catch (err) {}
+    }
+
+    function handleDelete(lessonId, lessonTitle) {
+      confirmAction({
+        title: 'Delete Lesson',
+        message: `Are you sure you want to delete lesson <strong>${lessonTitle}</strong> (#${lessonId})?`,
+        confirmText: 'Delete Lesson',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/lessons/${lessonId}`, { method: 'DELETE' });
+            showToast(`Lesson #${lessonId} deleted successfully.`, 'success');
+            loadLessons('', document.getElementById('course-filter').value);
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCourses();
+      loadLessons();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enrollments | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item active"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Course Enrollments</h2>
+            <p>Manage student registrations in active courses and track enrollment dates</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Enroll Student</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search by student or course..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <span id="enrollment-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Enrollment ID</th>
+                  <th>Student</th>
+                  <th>Enrolled Course</th>
+                  <th>Faculty</th>
+                  <th>Date of Enrollment</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="enrollments-table-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading enrollments...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Enrollment Form Dialog -->
+  <dialog id="enrollment-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="enrollment-modal-title">Enroll Student</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('enrollment-modal').close()">✕</button>
+      </div>
+      <form id="enrollment-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="enrollment-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="std-select">Student <span class="required">*</span></label>
+            <select id="std-select" class="form-control" required>
+              <option value="">-- Select Student --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="course-select">Course <span class="required">*</span></label>
+            <select id="course-select" class="form-control" required>
+              <option value="">-- Select Course --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="enrollment-date">Enrollment Date <span class="required">*</span></label>
+            <input type="date" id="enrollment-date" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('enrollment-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="enrollment-submit-btn">Enroll Student</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let students = [];
+    let courses = [];
+
+    async function loadDropdowns() {
+      try {
+        const [stRes, crRes] = await Promise.all([
+          apiFetch('/api/students'),
+          apiFetch('/api/courses')
+        ]);
+        if (stRes.success) {
+          students = stRes.data;
+          document.getElementById('std-select').innerHTML = '<option value="">-- Select Student --</option>' +
+            students.map(s => `<option value="${s.std_id}">${escapeHtml(s.std_name)} (${escapeHtml(s.email)})</option>`).join('');
+        }
+        if (crRes.success) {
+          courses = crRes.data;
+          document.getElementById('course-select').innerHTML = '<option value="">-- Select Course --</option>' +
+            courses.map(c => `<option value="${c.course_id}">${escapeHtml(c.course_name)}</option>`).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function loadEnrollments(searchQuery = '') {
+      try {
+        const url = searchQuery ? `/api/enrollments?search=${encodeURIComponent(searchQuery)}` : '/api/enrollments';
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderEnrollments(res.data);
+          document.getElementById('enrollment-count-badge').textContent = `${res.count} enrollment(s)`;
+        }
+      } catch (err) {
+        document.getElementById('enrollments-table-body').innerHTML = `
+          <tr><td colspan="6" style="text-align: center; color: var(--danger);">Failed to load enrollments.</td></tr>
+        `;
+      }
+    }
+
+    function renderEnrollments(items) {
+      const tbody = document.getElementById('enrollments-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <h3>No Enrollments Found</h3>
+                <p>Register a student in a course to start tracking their progress.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Enroll Student</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(e => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${e.enrollment_id}</span></td>
+          <td>
+            <strong>${escapeHtml(e.std_name)}</strong>
+            <br><small style="color:var(--text-muted);">${escapeHtml(e.student_email)}</small>
+          </td>
+          <td><span class="badge badge-blue">${escapeHtml(e.course_name)}</span></td>
+          <td>${escapeHtml(e.instructor_name || 'N/A')}</td>
+          <td>${formatDate(e.enrollment_date)}</td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="Edit Enrollment" onclick="openEditModal(${e.enrollment_id})">✏️</button>
+              <button class="btn-icon delete" title="Cancel Enrollment" onclick="handleDelete(${e.enrollment_id}, '${escapeHtml(e.std_name)}', '${escapeHtml(e.course_name)}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      loadEnrollments(val);
+    }, 300);
+
+    function openCreateModal() {
+      document.getElementById('enrollment-modal-title').textContent = 'Enroll Student';
+      document.getElementById('enrollment-id').value = '';
+      document.getElementById('std-select').value = '';
+      document.getElementById('course-select').value = '';
+      document.getElementById('enrollment-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('enrollment-submit-btn').textContent = 'Confirm Enrollment';
+      document.getElementById('enrollment-modal').showModal();
+    }
+
+    async function openEditModal(enrId) {
+      try {
+        const res = await apiFetch(`/api/enrollments/${enrId}`);
+        if (res.success) {
+          const e = res.data;
+          document.getElementById('enrollment-modal-title').textContent = `Edit Enrollment #${e.enrollment_id}`;
+          document.getElementById('enrollment-id').value = e.enrollment_id;
+          document.getElementById('std-select').value = e.std_id;
+          document.getElementById('course-select').value = e.course_id;
+          document.getElementById('enrollment-date').value = new Date(e.enrollment_date).toISOString().split('T')[0];
+          document.getElementById('enrollment-submit-btn').textContent = 'Update Enrollment';
+          document.getElementById('enrollment-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('enrollment-id').value;
+      const payload = {
+        std_id: parseInt(document.getElementById('std-select').value, 10),
+        course_id: parseInt(document.getElementById('course-select').value, 10),
+        enrollment_date: document.getElementById('enrollment-date').value,
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/enrollments/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Enrollment updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/enrollments', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Student enrolled successfully.', 'success');
+        }
+
+        document.getElementById('enrollment-modal').close();
+        loadEnrollments();
+      } catch (err) {}
+    }
+
+    function handleDelete(enrId, stdName, courseName) {
+      confirmAction({
+        title: 'Cancel Enrollment',
+        message: `Remove enrollment #${enrId} for <strong>${stdName}</strong> in <strong>${courseName}</strong>?`,
+        confirmText: 'Remove Enrollment',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/enrollments/${enrId}`, { method: 'DELETE' });
+            showToast(`Enrollment #${enrId} cancelled successfully.`, 'success');
+            loadEnrollments();
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDropdowns();
+      loadEnrollments();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instructors | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item active"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Faculty & Instructors</h2>
+            <p>Manage instructors, qualifications, and course teaching loads</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Add Instructor</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search by name, email, or qualification..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <span id="instructor-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Faculty Name</th>
+                  <th>Email</th>
+                  <th>Qualification</th>
+                  <th>Active Courses</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="instructors-table-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading instructors from database...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Instructor Form Dialog -->
+  <dialog id="instructor-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="instructor-modal-title">Add Instructor</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('instructor-modal').close()">✕</button>
+      </div>
+      <form id="instructor-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="instructor-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="inst-name">Full Name <span class="required">*</span></label>
+            <input type="text" id="inst-name" class="form-control" required placeholder="e.g. Dr. Aarav Sharma" maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="inst-email">Email Address <span class="required">*</span></label>
+            <input type="email" id="inst-email" class="form-control" required placeholder="e.g. aarav@example.com" maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="inst-qual">Highest Qualification</label>
+            <input type="text" id="inst-qual" class="form-control" placeholder="e.g. Ph.D. in Computer Science" maxlength="100">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('instructor-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="instructor-submit-btn">Save Instructor</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    async function loadInstructors(searchQuery = '') {
+      try {
+        const url = searchQuery ? `/api/instructors?search=${encodeURIComponent(searchQuery)}` : '/api/instructors';
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderInstructors(res.data);
+          document.getElementById('instructor-count-badge').textContent = `${res.count} instructor(s) found`;
+        }
+      } catch (err) {
+        document.getElementById('instructors-table-body').innerHTML = `
+          <tr><td colspan="6" style="text-align: center; color: var(--danger);">Failed to load instructors.</td></tr>
+        `;
+      }
+    }
+
+    function renderInstructors(instructors) {
+      const tbody = document.getElementById('instructors-table-body');
+      if (instructors.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">👨‍🏫</div>
+                <h3>No Instructors Found</h3>
+                <p>Register faculty members to assign them to courses and evaluations.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Add Instructor</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = instructors.map(i => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${i.instructor_id}</span></td>
+          <td><strong>${escapeHtml(i.inst_name)}</strong></td>
+          <td>${escapeHtml(i.email)}</td>
+          <td>${escapeHtml(i.qualification || 'N/A')}</td>
+          <td><span class="badge badge-purple">${i.total_courses} course(s)</span></td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="Edit Instructor" onclick="openEditModal(${i.instructor_id})">✏️</button>
+              <button class="btn-icon delete" title="Delete Instructor" onclick="handleDelete(${i.instructor_id}, '${escapeHtml(i.inst_name)}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      loadInstructors(val);
+    }, 300);
+
+    function openCreateModal() {
+      document.getElementById('instructor-modal-title').textContent = 'Add Instructor';
+      document.getElementById('instructor-id').value = '';
+      document.getElementById('inst-name').value = '';
+      document.getElementById('inst-email').value = '';
+      document.getElementById('inst-qual').value = '';
+      document.getElementById('instructor-submit-btn').textContent = 'Register Instructor';
+      document.getElementById('instructor-modal').showModal();
+    }
+
+    async function openEditModal(instId) {
+      try {
+        const res = await apiFetch(`/api/instructors/${instId}`);
+        if (res.success) {
+          const i = res.data;
+          document.getElementById('instructor-modal-title').textContent = `Edit Instructor #${i.instructor_id}`;
+          document.getElementById('instructor-id').value = i.instructor_id;
+          document.getElementById('inst-name').value = i.inst_name;
+          document.getElementById('inst-email').value = i.email;
+          document.getElementById('inst-qual').value = i.qualification || '';
+          document.getElementById('instructor-submit-btn').textContent = 'Update Instructor';
+          document.getElementById('instructor-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('instructor-id').value;
+      const payload = {
+        inst_name: document.getElementById('inst-name').value.trim(),
+        email: document.getElementById('inst-email').value.trim(),
+        qualification: document.getElementById('inst-qual').value.trim() || null,
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/instructors/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Instructor updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/instructors', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Instructor registered successfully.', 'success');
+        }
+
+        document.getElementById('instructor-modal').close();
+        loadInstructors();
+      } catch (err) {}
+    }
+
+    function handleDelete(instId, instName) {
+      confirmAction({
+        title: 'Delete Instructor',
+        message: `Are you sure you want to delete instructor <strong>${instName}</strong> (#${instId})?<br><br><small style="color:var(--text-muted);">Note: Cannot delete if courses or evaluations are linked to this instructor.</small>`,
+        confirmText: 'Delete Instructor',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/instructors/${instId}`, { method: 'DELETE' });
+            showToast(`Instructor #${instId} deleted successfully.`, 'success');
+            loadInstructors();
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => loadInstructors());
+  </script>
+</body>
+</html>

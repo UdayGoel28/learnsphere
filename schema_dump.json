@@ -1,0 +1,486 @@
+{
+  "Assignment": {
+    "columns": [
+      {
+        "Field": "asg_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "course_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "title",
+        "Type": "varchar(150)",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "due_date",
+        "Type": "date",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "total_marks",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "course_id",
+        "REFERENCED_TABLE_NAME": "Course",
+        "REFERENCED_COLUMN_NAME": "course_id",
+        "CONSTRAINT_NAME": "assignment_ibfk_1"
+      }
+    ],
+    "rowCount": 2
+  },
+  "Certificate": {
+    "columns": [
+      {
+        "Field": "certificate_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "std_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "course_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "issue_date",
+        "Type": "date",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "std_id",
+        "REFERENCED_TABLE_NAME": "Student",
+        "REFERENCED_COLUMN_NAME": "std_id",
+        "CONSTRAINT_NAME": "certificate_ibfk_1"
+      },
+      {
+        "COLUMN_NAME": "course_id",
+        "REFERENCED_TABLE_NAME": "Course",
+        "REFERENCED_COLUMN_NAME": "course_id",
+        "CONSTRAINT_NAME": "certificate_ibfk_2"
+      }
+    ],
+    "rowCount": 1
+  },
+  "Course": {
+    "columns": [
+      {
+        "Field": "course_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "course_name",
+        "Type": "varchar(100)",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "price",
+        "Type": "decimal(10,2)",
+        "Null": "NO",
+        "Key": "",
+        "Default": "0.00",
+        "Extra": ""
+      },
+      {
+        "Field": "instructor_id",
+        "Type": "int",
+        "Null": "YES",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "instructor_id",
+        "REFERENCED_TABLE_NAME": "Instructor",
+        "REFERENCED_COLUMN_NAME": "instructor_id",
+        "CONSTRAINT_NAME": "course_ibfk_1"
+      }
+    ],
+    "rowCount": 3
+  },
+  "Enrollment": {
+    "columns": [
+      {
+        "Field": "enrollment_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "std_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "course_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "enrollment_date",
+        "Type": "date",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "std_id",
+        "REFERENCED_TABLE_NAME": "Student",
+        "REFERENCED_COLUMN_NAME": "std_id",
+        "CONSTRAINT_NAME": "enrollment_ibfk_1"
+      },
+      {
+        "COLUMN_NAME": "course_id",
+        "REFERENCED_TABLE_NAME": "Course",
+        "REFERENCED_COLUMN_NAME": "course_id",
+        "CONSTRAINT_NAME": "enrollment_ibfk_2"
+      }
+    ],
+    "rowCount": 4
+  },
+  "Evaluation": {
+    "columns": [
+      {
+        "Field": "evaluation_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "submission_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "UNI",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "feedback",
+        "Type": "varchar(500)",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "evaluation_date",
+        "Type": "date",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "instructor_id",
+        "Type": "int",
+        "Null": "YES",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "submission_id",
+        "REFERENCED_TABLE_NAME": "Submission",
+        "REFERENCED_COLUMN_NAME": "submission_id",
+        "CONSTRAINT_NAME": "evaluation_ibfk_1"
+      },
+      {
+        "COLUMN_NAME": "instructor_id",
+        "REFERENCED_TABLE_NAME": "Instructor",
+        "REFERENCED_COLUMN_NAME": "instructor_id",
+        "CONSTRAINT_NAME": "fk_evaluation_instructor"
+      }
+    ],
+    "rowCount": 3
+  },
+  "Instructor": {
+    "columns": [
+      {
+        "Field": "instructor_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "inst_name",
+        "Type": "varchar(100)",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "email",
+        "Type": "varchar(100)",
+        "Null": "NO",
+        "Key": "UNI",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "qualification",
+        "Type": "varchar(100)",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [],
+    "rowCount": 2
+  },
+  "Lesson": {
+    "columns": [
+      {
+        "Field": "lesson_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "course_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "lesson_title",
+        "Type": "varchar(150)",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "course_id",
+        "REFERENCED_TABLE_NAME": "Course",
+        "REFERENCED_COLUMN_NAME": "course_id",
+        "CONSTRAINT_NAME": "lesson_ibfk_1"
+      }
+    ],
+    "rowCount": 4
+  },
+  "Student": {
+    "columns": [
+      {
+        "Field": "std_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "std_name",
+        "Type": "varchar(100)",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "email",
+        "Type": "varchar(100)",
+        "Null": "NO",
+        "Key": "UNI",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "contact",
+        "Type": "varchar(15)",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [],
+    "rowCount": 3
+  },
+  "Study_Material": {
+    "columns": [
+      {
+        "Field": "material_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "course_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "material_title",
+        "Type": "varchar(150)",
+        "Null": "NO",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "material_type",
+        "Type": "varchar(50)",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "resource_link",
+        "Type": "varchar(500)",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "course_id",
+        "REFERENCED_TABLE_NAME": "Course",
+        "REFERENCED_COLUMN_NAME": "course_id",
+        "CONSTRAINT_NAME": "study_material_ibfk_1"
+      }
+    ],
+    "rowCount": 2
+  },
+  "Submission": {
+    "columns": [
+      {
+        "Field": "submission_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "PRI",
+        "Default": null,
+        "Extra": "auto_increment"
+      },
+      {
+        "Field": "std_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "asg_id",
+        "Type": "int",
+        "Null": "NO",
+        "Key": "MUL",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "submission_date",
+        "Type": "date",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      },
+      {
+        "Field": "marks_obtained",
+        "Type": "int",
+        "Null": "YES",
+        "Key": "",
+        "Default": null,
+        "Extra": ""
+      }
+    ],
+    "foreignKeys": [
+      {
+        "COLUMN_NAME": "std_id",
+        "REFERENCED_TABLE_NAME": "Student",
+        "REFERENCED_COLUMN_NAME": "std_id",
+        "CONSTRAINT_NAME": "submission_ibfk_1"
+      },
+      {
+        "COLUMN_NAME": "asg_id",
+        "REFERENCED_TABLE_NAME": "Assignment",
+        "REFERENCED_COLUMN_NAME": "asg_id",
+        "CONSTRAINT_NAME": "submission_ibfk_2"
+      }
+    ],
+    "rowCount": 3
+  }
+}

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assignments | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item active"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Course Assignments</h2>
+            <p>Create problem sets, due dates, maximum scores, and review student submissions</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Add Assignment</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search assignment title..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <select id="course-filter" class="form-control" style="width: auto;" onchange="handleFilterChange(this.value)">
+                <option value="">All Courses</option>
+              </select>
+              <span id="asg-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Assignment Title</th>
+                  <th>Course</th>
+                  <th>Due Date</th>
+                  <th>Max Score</th>
+                  <th>Submissions</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="assignments-table-body">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading assignments...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Assignment Form Dialog -->
+  <dialog id="assignment-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="asg-modal-title">Create Assignment</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('assignment-modal').close()">✕</button>
+      </div>
+      <form id="assignment-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="asg-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="course-select">Course <span class="required">*</span></label>
+            <select id="course-select" class="form-control" required>
+              <option value="">-- Select Course --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="asg-title">Assignment Title <span class="required">*</span></label>
+            <input type="text" id="asg-title" class="form-control" required placeholder="e.g. SQL Queries & ER Diagrams" maxlength="150">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="asg-due-date">Due Date</label>
+            <input type="date" id="asg-due-date" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="asg-marks">Maximum Total Marks <span class="required">*</span></label>
+            <input type="number" id="asg-marks" class="form-control" required min="1" max="1000" placeholder="e.g. 100">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('assignment-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="asg-submit-btn">Save Assignment</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Assignment Submissions View Dialog -->
+  <dialog id="asg-details-modal" style="max-width: 650px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="asg-details-title">Assignment Submissions</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('asg-details-modal').close()">✕</button>
+      </div>
+      <div class="modal-body" id="asg-details-body">
+        Loading submissions...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('asg-details-modal').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let courses = [];
+
+    async function loadCourses() {
+      try {
+        const res = await apiFetch('/api/courses');
+        if (res.success) {
+          courses = res.data;
+          const options = courses.map(c => `<option value="${c.course_id}">${escapeHtml(c.course_name)}</option>`).join('');
+          document.getElementById('course-select').innerHTML = '<option value="">-- Select Course --</option>' + options;
+          document.getElementById('course-filter').innerHTML = '<option value="">All Courses</option>' + options;
+        }
+      } catch (e) {}
+    }
+
+    async function loadAssignments(searchQuery = '', courseFilter = '') {
+      try {
+        let url = '/api/assignments?';
+        if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
+        if (courseFilter) url += `course_id=${encodeURIComponent(courseFilter)}&`;
+
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderAssignments(res.data);
+          document.getElementById('asg-count-badge').textContent = `${res.count} assignment(s)`;
+        }
+      } catch (err) {
+        document.getElementById('assignments-table-body').innerHTML = `
+          <tr><td colspan="7" style="text-align: center; color: var(--danger);">Failed to load assignments.</td></tr>
+        `;
+      }
+    }
+
+    function renderAssignments(items) {
+      const tbody = document.getElementById('assignments-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <h3>No Assignments Found</h3>
+                <p>Post assignments to evaluate student understanding of course modules.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Add Assignment</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(a => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${a.asg_id}</span></td>
+          <td><strong>${escapeHtml(a.title)}</strong></td>
+          <td><span class="badge badge-blue">${escapeHtml(a.course_name)}</span></td>
+          <td>${a.due_date ? formatDate(a.due_date) : '<span style="color:var(--text-muted);">No deadline</span>'}</td>
+          <td><span class="badge badge-neutral">${a.total_marks} pts</span></td>
+          <td><span class="badge badge-purple">${a.submission_count} submitted</span></td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="View Submissions" onclick="openDetailsModal(${a.asg_id})">👁️</button>
+              <button class="btn-icon" title="Edit Assignment" onclick="openEditModal(${a.asg_id})">✏️</button>
+              <button class="btn-icon delete" title="Delete Assignment" onclick="handleDelete(${a.asg_id}, '${escapeHtml(a.title)}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      const courseVal = document.getElementById('course-filter').value;
+      loadAssignments(val, courseVal);
+    }, 300);
+
+    function handleFilterChange(val) {
+      const searchVal = document.getElementById('search-input').value;
+      loadAssignments(searchVal, val);
+    }
+
+    function openCreateModal() {
+      document.getElementById('asg-modal-title').textContent = 'Create Assignment';
+      document.getElementById('asg-id').value = '';
+      document.getElementById('course-select').value = document.getElementById('course-filter').value || '';
+      document.getElementById('asg-title').value = '';
+      document.getElementById('asg-due-date').value = '';
+      document.getElementById('asg-marks').value = '100';
+      document.getElementById('asg-submit-btn').textContent = 'Post Assignment';
+      document.getElementById('assignment-modal').showModal();
+    }
+
+    async function openEditModal(asgId) {
+      try {
+        const res = await apiFetch(`/api/assignments/${asgId}`);
+        if (res.success) {
+          const a = res.data;
+          document.getElementById('asg-modal-title').textContent = `Edit Assignment #${a.asg_id}`;
+          document.getElementById('asg-id').value = a.asg_id;
+          document.getElementById('course-select').value = a.course_id;
+          document.getElementById('asg-title').value = a.title;
+          document.getElementById('asg-due-date').value = a.due_date ? new Date(a.due_date).toISOString().split('T')[0] : '';
+          document.getElementById('asg-marks').value = a.total_marks;
+          document.getElementById('asg-submit-btn').textContent = 'Update Assignment';
+          document.getElementById('assignment-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('asg-id').value;
+      const payload = {
+        course_id: parseInt(document.getElementById('course-select').value, 10),
+        title: document.getElementById('asg-title').value.trim(),
+        due_date: document.getElementById('asg-due-date').value || null,
+        total_marks: parseInt(document.getElementById('asg-marks').value, 10),
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/assignments/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Assignment updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/assignments', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Assignment created successfully.', 'success');
+        }
+
+        document.getElementById('assignment-modal').close();
+        loadAssignments('', document.getElementById('course-filter').value);
+      } catch (err) {}
+    }
+
+    async function openDetailsModal(asgId) {
+      const modal = document.getElementById('asg-details-modal');
+      const body = document.getElementById('asg-details-body');
+      body.innerHTML = 'Loading submissions...';
+      modal.showModal();
+
+      try {
+        const res = await apiFetch(`/api/assignments/${asgId}`);
+        if (res.success) {
+          const a = res.data;
+          document.getElementById('asg-details-title').textContent = `${a.title} (${a.course_name})`;
+
+          body.innerHTML = `
+            <div style="margin-bottom: 1.25rem; background: var(--bg-surface-subtle); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+              <p><strong>Max Score:</strong> ${a.total_marks} marks</p>
+              <p><strong>Due Date:</strong> ${a.due_date ? formatDate(a.due_date) : 'No due date'}</p>
+              <p><strong>Total Submissions:</strong> ${a.submissions.length}</p>
+            </div>
+
+            <h4 style="margin: 1rem 0 0.5rem; font-size: 0.95rem; color: var(--primary);">Student Submissions</h4>
+            ${a.submissions.length === 0 ? '<p style="color:var(--text-muted); font-size: 0.85rem;">No student has submitted this assignment yet.</p>' : `
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Submission Date</th>
+                      <th>Score</th>
+                      <th>Feedback</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${a.submissions.map(sub => `
+                      <tr>
+                        <td><strong>${escapeHtml(sub.std_name)}</strong><br><small style="color:var(--text-muted);">${escapeHtml(sub.email)}</small></td>
+                        <td>${formatDate(sub.submission_date)}</td>
+                        <td>${sub.marks_obtained !== null ? `<span class="badge badge-green">${sub.marks_obtained}/${a.total_marks}</span>` : '<span class="badge badge-amber">Ungraded</span>'}</td>
+                        <td><small>${escapeHtml(sub.feedback || 'None')}</small></td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `}
+          `;
+        }
+      } catch (err) {
+        body.innerHTML = '<p style="color:var(--danger);">Failed to load assignment submissions.</p>';
+      }
+    }
+
+    function handleDelete(asgId, title) {
+      confirmAction({
+        title: 'Delete Assignment',
+        message: `Are you sure you want to delete assignment <strong>${title}</strong> (#${asgId})?<br><br><small style="color:var(--text-muted);">Note: Cannot delete if students have already submitted work for this assignment.</small>`,
+        confirmText: 'Delete Assignment',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/assignments/${asgId}`, { method: 'DELETE' });
+            showToast(`Assignment #${asgId} deleted successfully.`, 'success');
+            loadAssignments('', document.getElementById('course-filter').value);
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCourses();
+      loadAssignments();
+    });
+  </script>
+</body>
+</html>

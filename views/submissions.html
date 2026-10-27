@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submissions | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item active"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Student Submissions</h2>
+            <p>Track turned-in assignments, submission timestamps, and grade awards</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Record Submission</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search student or assignment..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <span id="sub-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Submission ID</th>
+                  <th>Student Name</th>
+                  <th>Assignment</th>
+                  <th>Course</th>
+                  <th>Submitted On</th>
+                  <th>Marks</th>
+                  <th>Evaluation</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="submissions-table-body">
+                <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Loading submissions...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Submission Form Dialog -->
+  <dialog id="submission-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="sub-modal-title">Record Submission</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('submission-modal').close()">✕</button>
+      </div>
+      <form id="submission-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="sub-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="std-select">Student <span class="required">*</span></label>
+            <select id="std-select" class="form-control" required>
+              <option value="">-- Select Student --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="asg-select">Assignment <span class="required">*</span></label>
+            <select id="asg-select" class="form-control" required>
+              <option value="">-- Select Assignment --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="sub-date">Submission Date</label>
+            <input type="date" id="sub-date" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="marks-obtained">Marks Obtained</label>
+            <input type="number" id="marks-obtained" class="form-control" min="0" placeholder="e.g. 85">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('submission-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="sub-submit-btn">Save Submission</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let students = [];
+    let assignments = [];
+
+    async function loadDropdowns() {
+      try {
+        const [stRes, asgRes] = await Promise.all([
+          apiFetch('/api/students'),
+          apiFetch('/api/assignments')
+        ]);
+        if (stRes.success) {
+          students = stRes.data;
+          document.getElementById('std-select').innerHTML = '<option value="">-- Select Student --</option>' +
+            students.map(s => `<option value="${s.std_id}">${escapeHtml(s.std_name)} (#${s.std_id})</option>`).join('');
+        }
+        if (asgRes.success) {
+          assignments = asgRes.data;
+          document.getElementById('asg-select').innerHTML = '<option value="">-- Select Assignment --</option>' +
+            assignments.map(a => `<option value="${a.asg_id}">${escapeHtml(a.title)} (${escapeHtml(a.course_name)} - Max: ${a.total_marks})</option>`).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function loadSubmissions(searchQuery = '') {
+      try {
+        const url = searchQuery ? `/api/submissions?search=${encodeURIComponent(searchQuery)}` : '/api/submissions';
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderSubmissions(res.data);
+          document.getElementById('sub-count-badge').textContent = `${res.count} submission(s)`;
+        }
+      } catch (err) {
+        document.getElementById('submissions-table-body').innerHTML = `
+          <tr><td colspan="8" style="text-align: center; color: var(--danger);">Failed to load submissions.</td></tr>
+        `;
+      }
+    }
+
+    function renderSubmissions(items) {
+      const tbody = document.getElementById('submissions-table-body');
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-state-icon">📤</div>
+                <h3>No Submissions Found</h3>
+                <p>Record submissions as students turn in their assignments.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Record Submission</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(s => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${s.submission_id}</span></td>
+          <td>
+            <strong>${escapeHtml(s.std_name)}</strong>
+            <br><small style="color:var(--text-muted);">${escapeHtml(s.student_email)}</small>
+          </td>
+          <td><strong>${escapeHtml(s.assignment_title)}</strong></td>
+          <td><span class="badge badge-blue">${escapeHtml(s.course_name)}</span></td>
+          <td>${formatDate(s.submission_date)}</td>
+          <td>
+            ${s.marks_obtained !== null 
+              ? `<span class="badge badge-green">${s.marks_obtained} / ${s.total_marks}</span>` 
+              : '<span class="badge badge-amber">Ungraded</span>'}
+          </td>
+          <td>
+            ${s.evaluation_id 
+              ? `<span class="badge badge-purple" title="${escapeHtml(s.feedback || 'Evaluated')}">Evaluated by ${escapeHtml(s.evaluated_by || 'Faculty')}</span>` 
+              : `<a href="/evaluations" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">+ Evaluate</a>`}
+          </td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="Edit Submission" onclick="openEditModal(${s.submission_id})">✏️</button>
+              <button class="btn-icon delete" title="Delete Submission" onclick="handleDelete(${s.submission_id})">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      loadSubmissions(val);
+    }, 300);
+
+    function openCreateModal() {
+      document.getElementById('sub-modal-title').textContent = 'Record Submission';
+      document.getElementById('sub-id').value = '';
+      document.getElementById('std-select').value = '';
+      document.getElementById('asg-select').value = '';
+      document.getElementById('sub-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('marks-obtained').value = '';
+      document.getElementById('sub-submit-btn').textContent = 'Save Submission';
+      document.getElementById('submission-modal').showModal();
+    }
+
+    async function openEditModal(subId) {
+      try {
+        const res = await apiFetch(`/api/submissions/${subId}`);
+        if (res.success) {
+          const s = res.data;
+          document.getElementById('sub-modal-title').textContent = `Edit Submission #${s.submission_id}`;
+          document.getElementById('sub-id').value = s.submission_id;
+          document.getElementById('std-select').value = s.std_id;
+          document.getElementById('asg-select').value = s.asg_id;
+          document.getElementById('sub-date').value = s.submission_date ? new Date(s.submission_date).toISOString().split('T')[0] : '';
+          document.getElementById('marks-obtained').value = s.marks_obtained !== null ? s.marks_obtained : '';
+          document.getElementById('sub-submit-btn').textContent = 'Update Submission';
+          document.getElementById('submission-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('sub-id').value;
+      const marksVal = document.getElementById('marks-obtained').value;
+      const payload = {
+        std_id: parseInt(document.getElementById('std-select').value, 10),
+        asg_id: parseInt(document.getElementById('asg-select').value, 10),
+        submission_date: document.getElementById('sub-date').value || null,
+        marks_obtained: marksVal !== '' ? parseInt(marksVal, 10) : null,
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/submissions/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Submission updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/submissions', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Submission recorded successfully.', 'success');
+        }
+
+        document.getElementById('submission-modal').close();
+        loadSubmissions();
+      } catch (err) {}
+    }
+
+    function handleDelete(subId) {
+      confirmAction({
+        title: 'Delete Submission',
+        message: `Are you sure you want to delete submission #${subId}?<br><br><small style="color:var(--text-muted);">Note: If an evaluation is linked to this submission, it must be deleted first.</small>`,
+        confirmText: 'Delete Submission',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/submissions/${subId}`, { method: 'DELETE' });
+            showToast(`Submission #${subId} deleted successfully.`, 'success');
+            loadSubmissions();
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDropdowns();
+      loadSubmissions();
+    });
+  </script>
+</body>
+</html>

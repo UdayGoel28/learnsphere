@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Courses | LearnSphere Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">LS</div>
+        <div class="brand-text">
+          <h1>LearnSphere</h1>
+          <p>RDBMS Admin Portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Core Modules</span>
+        <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/students" class="nav-item"><span class="nav-icon">🎓</span> Students</a>
+        <a href="/courses" class="nav-item active"><span class="nav-icon">📚</span> Courses</a>
+        <a href="/instructors" class="nav-item"><span class="nav-icon">👨‍🏫</span> Instructors</a>
+
+        <span class="nav-section-label">Academic Management</span>
+        <a href="/enrollments" class="nav-item"><span class="nav-icon">📝</span> Enrollments</a>
+        <a href="/lessons" class="nav-item"><span class="nav-icon">📖</span> Lessons</a>
+        <a href="/study-materials" class="nav-item"><span class="nav-icon">📁</span> Study Materials</a>
+        <a href="/assignments" class="nav-item"><span class="nav-icon">📋</span> Assignments</a>
+        <a href="/submissions" class="nav-item"><span class="nav-icon">📤</span> Submissions</a>
+        <a href="/evaluations" class="nav-item"><span class="nav-icon">⭐</span> Evaluations</a>
+        <a href="/certificates" class="nav-item"><span class="nav-icon">🎖️</span> Certificates</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-pill">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-label">Checking Database...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <button class="mobile-toggle" id="mobile-sidebar-toggle" aria-label="Toggle navigation">☰</button>
+          <div class="header-title-block">
+            <h2>Course Catalog</h2>
+            <p>Manage curriculum, pricing, faculty assignments, and syllabus</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Add Course</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-input" class="search-input" placeholder="Search by course name or faculty..." oninput="handleSearch(this.value)">
+            </div>
+            <div class="table-actions">
+              <span id="course-count-badge" class="badge badge-neutral">Loading...</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Course Title</th>
+                  <th>Assigned Faculty</th>
+                  <th>Price</th>
+                  <th>Enrolled</th>
+                  <th>Content Units</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="courses-table-body">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading courses from database...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Course Form Dialog -->
+  <dialog id="course-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="course-modal-title">Add New Course</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('course-modal').close()">✕</button>
+      </div>
+      <form id="course-form" onsubmit="handleFormSubmit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="course-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="course-name">Course Title <span class="required">*</span></label>
+            <input type="text" id="course-name" class="form-control" required placeholder="e.g. Database Management Systems" maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="course-price">Course Price (INR) <span class="required">*</span></label>
+            <input type="number" id="course-price" class="form-control" required min="0" step="0.01" placeholder="e.g. 2499.00">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="instructor-select">Assigned Instructor</label>
+            <select id="instructor-select" class="form-control">
+              <option value="">-- No Instructor Assigned --</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('course-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="course-submit-btn">Save Course</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Course Details / Syllabus Dialog -->
+  <dialog id="course-details-modal" style="max-width: 650px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="course-details-title">Course Curriculum</h3>
+        <button type="button" class="modal-close-btn" onclick="document.getElementById('course-details-modal').close()">✕</button>
+      </div>
+      <div class="modal-body" id="course-details-body">
+        Loading syllabus...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('course-details-modal').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let instructorsList = [];
+
+    async function loadInstructors() {
+      try {
+        const res = await apiFetch('/api/instructors');
+        if (res.success) {
+          instructorsList = res.data;
+          const select = document.getElementById('instructor-select');
+          select.innerHTML = '<option value="">-- No Instructor Assigned --</option>' +
+            instructorsList.map(i => `<option value="${i.instructor_id}">${escapeHtml(i.inst_name)} (${escapeHtml(i.qualification || 'Faculty')})</option>`).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function loadCourses(searchQuery = '') {
+      try {
+        const url = searchQuery ? `/api/courses?search=${encodeURIComponent(searchQuery)}` : '/api/courses';
+        const res = await apiFetch(url);
+        if (res.success) {
+          renderCourses(res.data);
+          document.getElementById('course-count-badge').textContent = `${res.count} course(s) found`;
+        }
+      } catch (err) {
+        document.getElementById('courses-table-body').innerHTML = `
+          <tr><td colspan="7" style="text-align: center; color: var(--danger);">Failed to load courses.</td></tr>
+        `;
+      }
+    }
+
+    function renderCourses(courses) {
+      const tbody = document.getElementById('courses-table-body');
+      if (courses.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <div class="empty-state-icon">📚</div>
+                <h3>No Courses Found</h3>
+                <p>Create your first course to begin publishing lessons and study materials.</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Add Course</button>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = courses.map(c => `
+        <tr>
+          <td><span style="font-family: var(--font-mono); color: var(--text-muted);">#${c.course_id}</span></td>
+          <td><strong>${escapeHtml(c.course_name)}</strong></td>
+          <td>
+            ${c.instructor_name 
+              ? `<span class="badge badge-purple">${escapeHtml(c.instructor_name)}</span>` 
+              : '<span style="color:var(--text-muted); font-size:0.8rem;">Unassigned</span>'}
+          </td>
+          <td>₹${parseFloat(c.price).toFixed(2)}</td>
+          <td><span class="badge badge-blue">${c.enrolled_count} student(s)</span></td>
+          <td>
+            <small style="color:var(--text-muted);">
+              ${c.lesson_count} lesson(s) • ${c.assignment_count} assignment(s)
+            </small>
+          </td>
+          <td style="text-align: right;">
+            <div class="btn-action-group" style="justify-content: flex-end;">
+              <button class="btn-icon" title="View Curriculum" onclick="openDetailsModal(${c.course_id})">👁️</button>
+              <button class="btn-icon" title="Edit Course" onclick="openEditModal(${c.course_id})">✏️</button>
+              <button class="btn-icon delete" title="Delete Course" onclick="handleDelete(${c.course_id}, '${escapeHtml(c.course_name)}')">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const handleSearch = debounce((val) => {
+      loadCourses(val);
+    }, 300);
+
+    function openCreateModal() {
+      document.getElementById('course-modal-title').textContent = 'Add New Course';
+      document.getElementById('course-id').value = '';
+      document.getElementById('course-name').value = '';
+      document.getElementById('course-price').value = '0.00';
+      document.getElementById('instructor-select').value = '';
+      document.getElementById('course-submit-btn').textContent = 'Create Course';
+      document.getElementById('course-modal').showModal();
+    }
+
+    async function openEditModal(courseId) {
+      try {
+        const res = await apiFetch(`/api/courses/${courseId}`);
+        if (res.success) {
+          const c = res.data;
+          document.getElementById('course-modal-title').textContent = `Edit Course #${c.course_id}`;
+          document.getElementById('course-id').value = c.course_id;
+          document.getElementById('course-name').value = c.course_name;
+          document.getElementById('course-price').value = parseFloat(c.price);
+          document.getElementById('instructor-select').value = c.instructor_id || '';
+          document.getElementById('course-submit-btn').textContent = 'Update Course';
+          document.getElementById('course-modal').showModal();
+        }
+      } catch (err) {}
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('course-id').value;
+      const payload = {
+        course_name: document.getElementById('course-name').value.trim(),
+        price: parseFloat(document.getElementById('course-price').value),
+        instructor_id: document.getElementById('instructor-select').value || null,
+      };
+
+      try {
+        if (id) {
+          await apiFetch(`/api/courses/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          showToast('Course updated successfully.', 'success');
+        } else {
+          await apiFetch('/api/courses', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          showToast('Course created successfully.', 'success');
+        }
+
+        document.getElementById('course-modal').close();
+        loadCourses();
+      } catch (err) {}
+    }
+
+    async function openDetailsModal(courseId) {
+      const modal = document.getElementById('course-details-modal');
+      const body = document.getElementById('course-details-body');
+      body.innerHTML = 'Loading curriculum...';
+      modal.showModal();
+
+      try {
+        const res = await apiFetch(`/api/courses/${courseId}/details`);
+        if (res.success) {
+          const { course, lessons, studyMaterials, assignments, enrolledStudents } = res.data;
+          document.getElementById('course-details-title').textContent = `${course.course_name} (ID #${course.course_id})`;
+
+          body.innerHTML = `
+            <div style="margin-bottom: 1.25rem; background: var(--bg-surface-subtle); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+              <p><strong>Faculty:</strong> ${escapeHtml(course.inst_name || 'Unassigned')}</p>
+              <p><strong>Tuition Price:</strong> ₹${parseFloat(course.price).toFixed(2)}</p>
+              <p><strong>Enrolled Students:</strong> ${enrolledStudents.length}</p>
+            </div>
+
+            <h4 style="margin: 1rem 0 0.5rem; font-size: 0.95rem; color: var(--primary);">📖 Lessons (${lessons.length})</h4>
+            ${lessons.length === 0 ? '<p style="color:var(--text-muted); font-size: 0.85rem;">No lessons added yet.</p>' : `
+              <ol style="margin-left: 1.5rem; font-size: 0.875rem;">
+                ${lessons.map(l => `<li>${escapeHtml(l.lesson_title)}</li>`).join('')}
+              </ol>
+            `}
+
+            <h4 style="margin: 1.25rem 0 0.5rem; font-size: 0.95rem; color: var(--accent-cyan);">📁 Study Materials (${studyMaterials.length})</h4>
+            ${studyMaterials.length === 0 ? '<p style="color:var(--text-muted); font-size: 0.85rem;">No study materials uploaded.</p>' : `
+              <ul style="list-style: disc; margin-left: 1.5rem; font-size: 0.875rem;">
+                ${studyMaterials.map(m => `
+                  <li>
+                    <strong>${escapeHtml(m.material_title)}</strong> 
+                    ${m.material_type ? `<span class="badge badge-neutral">${escapeHtml(m.material_type)}</span>` : ''}
+                    ${m.resource_link ? `— <a href="${escapeHtml(m.resource_link)}" target="_blank" rel="noopener">Link</a>` : ''}
+                  </li>
+                `).join('')}
+              </ul>
+            `}
+
+            <h4 style="margin: 1.25rem 0 0.5rem; font-size: 0.95rem; color: var(--accent-purple);">📋 Assignments (${assignments.length})</h4>
+            ${assignments.length === 0 ? '<p style="color:var(--text-muted); font-size: 0.85rem;">No assignments created.</p>' : `
+              <ul style="list-style: square; margin-left: 1.5rem; font-size: 0.875rem;">
+                ${assignments.map(a => `<li><strong>${escapeHtml(a.title)}</strong> (Max: ${a.total_marks} marks, Due: ${formatDate(a.due_date)})</li>`).join('')}
+              </ul>
+            `}
+          `;
+        }
+      } catch (err) {
+        body.innerHTML = '<p style="color:var(--danger);">Failed to load course details.</p>';
+      }
+    }
+
+    function handleDelete(courseId, courseName) {
+      confirmAction({
+        title: 'Delete Course',
+        message: `Are you sure you want to delete course <strong>${courseName}</strong> (#${courseId})?<br><br><small style="color:var(--text-muted);">Note: Cannot delete if enrollments, lessons, study materials, or assignments are linked to this course.</small>`,
+        confirmText: 'Delete Course',
+        onConfirm: async () => {
+          try {
+            await apiFetch(`/api/courses/${courseId}`, { method: 'DELETE' });
+            showToast(`Course #${courseId} deleted successfully.`, 'success');
+            loadCourses();
+          } catch (err) {}
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadInstructors();
+      loadCourses();
+    });
+  </script>
+</body>
+</html>
