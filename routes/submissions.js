@@ -58,7 +58,7 @@ async function validateSubmissionInput(data, isUpdate = false) {
  */
 router.get('/', async (req, res, next) => {
   try {
-    const { asg_id, std_id, search } = req.query;
+    const { asg_id, std_id, course_id, search } = req.query;
     let sql = `
       SELECT 
         sub.submission_id,
@@ -86,6 +86,10 @@ router.get('/', async (req, res, next) => {
     const params = [];
     const conditions = [];
 
+    if (course_id) {
+      conditions.push('c.course_id = ?');
+      params.push(parseInt(course_id, 10));
+    }
     if (asg_id) {
       conditions.push('sub.asg_id = ?');
       params.push(parseInt(asg_id, 10));

@@ -149,11 +149,27 @@
         ]);
         if (subRes.success) {
           submissions = subRes.data;
-          // Filter to those without an evaluation or allow selecting all
           const unEvaluated = submissions.filter(s => !s.evaluation_id);
+          const evaluated = submissions.filter(s => s.evaluation_id);
           const select = document.getElementById('submission-select');
-          select.innerHTML = '<option value="">-- Select Submission --</option>' +
-            unEvaluated.map(s => `<option value="${s.submission_id}">#${s.submission_id}: ${escapeHtml(s.std_name)} — ${escapeHtml(s.assignment_title)}</option>`).join('');
+
+          if (submissions.length === 0) {
+            select.innerHTML = '<option value="">No student submissions found in database</option>';
+          } else if (unEvaluated.length === 0) {
+            select.innerHTML = '<option value="">-- All submissions evaluated (Select to edit/re-grade) --</option>' +
+              evaluated.map(s => `<option value="${s.submission_id}">#${s.submission_id}: ${escapeHtml(s.std_name)} — ${escapeHtml(s.assignment_title)} (${escapeHtml(s.course_name)}) [Evaluated]</option>`).join('');
+          } else {
+            let html = '<option value="">-- Select Submission --</option>';
+            html += `<optgroup label="Pending Evaluation (${unEvaluated.length})">` +
+              unEvaluated.map(s => `<option value="${s.submission_id}">#${s.submission_id}: ${escapeHtml(s.std_name)} — ${escapeHtml(s.assignment_title)} (${escapeHtml(s.course_name)})</option>`).join('') +
+              `</optgroup>`;
+            if (evaluated.length > 0) {
+              html += `<optgroup label="Already Evaluated (${evaluated.length})">` +
+                evaluated.map(s => `<option value="${s.submission_id}">#${s.submission_id}: ${escapeHtml(s.std_name)} — ${escapeHtml(s.assignment_title)} [Score: ${s.marks_obtained !== null ? s.marks_obtained : 'N/A'}]</option>`).join('') +
+                `</optgroup>`;
+            }
+            select.innerHTML = html;
+          }
         }
         if (instRes.success) {
           instructors = instRes.data;

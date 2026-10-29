@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Enrollments | LearnSphere Admin</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
   <div class="app-container">
     <!-- Sidebar Navigation -->
@@ -63,7 +65,8 @@
           <div class="table-toolbar">
             <div class="search-box">
               <span class="search-icon">🔍</span>
-              <input type="text" id="search-input" class="search-input" placeholder="Search by student or course..." oninput="handleSearch(this.value)">
+              <input type="text" id="search-input" class="search-input" placeholder="Search by student or course..."
+                oninput="handleSearch(this.value)">
             </div>
             <div class="table-actions">
               <span id="enrollment-count-badge" class="badge badge-neutral">Loading...</span>
@@ -83,7 +86,9 @@
                 </tr>
               </thead>
               <tbody id="enrollments-table-body">
-                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading enrollments...</td></tr>
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted);">Loading enrollments...</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -97,12 +102,13 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title" id="enrollment-modal-title">Enroll Student</h3>
-        <button type="button" class="modal-close-btn" onclick="document.getElementById('enrollment-modal').close()">✕</button>
+        <button type="button" class="modal-close-btn"
+          onclick="document.getElementById('enrollment-modal').close()">✕</button>
       </div>
       <form id="enrollment-form" onsubmit="handleFormSubmit(event)">
         <div class="modal-body">
           <input type="hidden" id="enrollment-id">
-          
+
           <div class="form-group">
             <label class="form-label" for="std-select">Student <span class="required">*</span></label>
             <select id="std-select" class="form-control" required>
@@ -123,7 +129,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="document.getElementById('enrollment-modal').close()">Cancel</button>
+          <button type="button" class="btn btn-secondary"
+            onclick="document.getElementById('enrollment-modal').close()">Cancel</button>
           <button type="submit" class="btn btn-primary" id="enrollment-submit-btn">Enroll Student</button>
         </div>
       </form>
@@ -151,7 +158,7 @@
           document.getElementById('course-select').innerHTML = '<option value="">-- Select Course --</option>' +
             courses.map(c => `<option value="${c.course_id}">${escapeHtml(c.course_name)}</option>`).join('');
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     async function loadEnrollments(searchQuery = '') {
@@ -234,7 +241,7 @@
           document.getElementById('enrollment-submit-btn').textContent = 'Update Enrollment';
           document.getElementById('enrollment-modal').showModal();
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     async function handleFormSubmit(e) {
@@ -263,7 +270,7 @@
 
         document.getElementById('enrollment-modal').close();
         loadEnrollments();
-      } catch (err) {}
+      } catch (err) { }
     }
 
     function handleDelete(enrId, stdName, courseName) {
@@ -276,7 +283,7 @@
             await apiFetch(`/api/enrollments/${enrId}`, { method: 'DELETE' });
             showToast(`Enrollment #${enrId} cancelled successfully.`, 'success');
             loadEnrollments();
-          } catch (err) {}
+          } catch (err) { }
         }
       });
     }
@@ -297,4 +304,5 @@
     });
   </script>
 </body>
+
 </html>

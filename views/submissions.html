@@ -64,6 +64,12 @@
               <input type="text" id="search-input" class="search-input" placeholder="Search student or assignment..." oninput="handleSearch(this.value)">
             </div>
             <div class="table-actions">
+              <select id="course-filter" class="form-control" style="width: auto;" onchange="handleFilterChange()">
+                <option value="">All Courses</option>
+              </select>
+              <select id="asg-filter" class="form-control" style="width: auto;" onchange="handleFilterChange()">
+                <option value="">All Assignments</option>
+              </select>
               <span id="sub-count-badge" class="badge badge-neutral">Loading...</span>
             </div>
           </div>
@@ -111,10 +117,20 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="asg-select">Assignment <span class="required">*</span></label>
-            <select id="asg-select" class="form-control" required>
+            <label class="form-label" for="modal-course-filter">Filter by Course (Optional)</label>
+            <select id="modal-course-filter" class="form-control" onchange="onModalCourseFilterChange(this.value)">
+              <option value="">-- All Courses --</option>
+            </select>
+            <div class="form-help">Select a course to narrow down the assignments list below.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="asg-select">Assignment to Submit <span class="required">*</span></label>
+            <select id="asg-select" class="form-control" required onchange="onAssignmentSelectChange(this.value)">
               <option value="">-- Select Assignment --</option>
             </select>
+            <div id="asg-details-preview" style="display:none; margin-top:0.6rem; padding:0.6rem 0.8rem; background:var(--bg-muted); border-left:3px solid var(--primary); border-radius:var(--radius-sm); font-size:0.83rem;">
+            </div>
           </div>
 
           <div class="form-group">
@@ -125,6 +141,7 @@
           <div class="form-group">
             <label class="form-label" for="marks-obtained">Marks Obtained</label>
             <input type="number" id="marks-obtained" class="form-control" min="0" placeholder="e.g. 85">
+            <div class="form-help" id="marks-help-text">Leave blank if submission is pending evaluation.</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -139,29 +156,116 @@
   <script>
     let students = [];
     let assignments = [];
+    let courses = [];
 
     async function loadDropdowns() {
       try {
-        const [stRes, asgRes] = await Promise.all([
+        const [stRes, asgRes, crsRes] = await Promise.all([
           apiFetch('/api/students'),
-          apiFetch('/api/assignments')
+          apiFetch('/api/assignments'),
+          apiFetch('/api/courses')
         ]);
         if (stRes.success) {
           students = stRes.data;
           document.getElementById('std-select').innerHTML = '<option value="">-- Select Student --</option>' +
-            students.map(s => `<option value="${s.std_id}">${escapeHtml(s.std_name)} (#${s.std_id})</option>`).join('');
+            students.map(s => `<option value="${s.std_id}">${escapeHtml(s.std_name)} (#${s.std_id} - ${escapeHtml(s.email)})</option>`).join('');
+        }
+        if (crsRes.success) {
+          courses = crsRes.data;
+          const courseOptions = courses.map(c => `<option value="${c.course_id}">${escapeHtml(c.course_name)}</option>`).join('');
+          document.getElementById('course-filter').innerHTML = '<option value="">All Courses</option>' + courseOptions;
+          document.getElementById('modal-course-filter').innerHTML = '<option value="">-- All Courses --</option>' + courseOptions;
         }
         if (asgRes.success) {
           assignments = asgRes.data;
-          document.getElementById('asg-select').innerHTML = '<option value="">-- Select Assignment --</option>' +
-            assignments.map(a => `<option value="${a.asg_id}">${escapeHtml(a.title)} (${escapeHtml(a.course_name)} - Max: ${a.total_marks})</option>`).join('');
+          // Populate toolbar assignment filter
+          document.getElementById('asg-filter').innerHTML = '<option value="">All Assignments</option>' +
+            assignments.map(a => `<option value="${a.asg_id}">${escapeHtml(a.title)} (${escapeHtml(a.course_name)})</option>`).join('');
+          
+          renderModalAssignmentOptions();
         }
       } catch (e) {}
     }
 
-    async function loadSubmissions(searchQuery = '') {
+    function renderModalAssignmentOptions(courseIdFilter = '', selectedAsgId = '') {
+      const select = document.getElementById('asg-select');
+      let filtered = assignments;
+      if (courseIdFilter) {
+        filtered = assignments.filter(a => String(a.course_id) === String(courseIdFilter));
+      }
+
+      if (filtered.length === 0) {
+        select.innerHTML = '<option value="">-- No assignments found for selected course --</option>';
+        document.getElementById('asg-details-preview').style.display = 'none';
+        return;
+      }
+
+      // Group by course
+      const grouped = {};
+      filtered.forEach(a => {
+        const cName = a.course_name || 'General';
+        if (!grouped[cName]) grouped[cName] = [];
+        grouped[cName].push(a);
+      });
+
+      let html = '<option value="">-- Select Assignment to Submit --</option>';
+      for (const [cName, asgList] of Object.entries(grouped)) {
+        html += `<optgroup label="${escapeHtml(cName)}">`;
+        asgList.forEach(a => {
+          const isSel = String(a.asg_id) === String(selectedAsgId) ? 'selected' : '';
+          const dueStr = a.due_date ? ` (Due: ${formatDate(a.due_date)})` : '';
+          html += `<option value="${a.asg_id}" ${isSel}>${escapeHtml(a.title)}${dueStr} - Max: ${a.total_marks} pts</option>`;
+        });
+        html += '</optgroup>';
+      }
+
+      select.innerHTML = html;
+      if (selectedAsgId) {
+        onAssignmentSelectChange(selectedAsgId);
+      } else {
+        document.getElementById('asg-details-preview').style.display = 'none';
+      }
+    }
+
+    function onModalCourseFilterChange(courseId) {
+      renderModalAssignmentOptions(courseId);
+    }
+
+    function onAssignmentSelectChange(asgId) {
+      const preview = document.getElementById('asg-details-preview');
+      const marksInput = document.getElementById('marks-obtained');
+      const marksHelp = document.getElementById('marks-help-text');
+      
+      if (!asgId) {
+        preview.style.display = 'none';
+        marksInput.removeAttribute('max');
+        marksHelp.textContent = 'Leave blank if submission is pending evaluation.';
+        return;
+      }
+
+      const found = assignments.find(a => String(a.asg_id) === String(asgId));
+      if (found) {
+        preview.style.display = 'block';
+        preview.innerHTML = `
+          <div style="font-weight: 600; margin-bottom: 0.25rem;">📋 ${escapeHtml(found.title)}</div>
+          <div style="color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 1rem;">
+            <span>📚 <strong>Course:</strong> ${escapeHtml(found.course_name)}</span>
+            <span>📅 <strong>Due Date:</strong> ${found.due_date ? formatDate(found.due_date) : 'No deadline'}</span>
+            <span>🎯 <strong>Max Score:</strong> ${found.total_marks} marks</span>
+          </div>
+        `;
+        marksInput.max = found.total_marks;
+        marksHelp.textContent = `Maximum obtainable score for this assignment is ${found.total_marks}.`;
+      }
+    }
+
+    async function loadSubmissions(searchQuery = '', courseId = '', asgId = '') {
       try {
-        const url = searchQuery ? `/api/submissions?search=${encodeURIComponent(searchQuery)}` : '/api/submissions';
+        let url = '/api/submissions?';
+        if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
+        if (courseId) url += `course_id=${encodeURIComponent(courseId)}&`;
+        if (asgId) url += `asg_id=${encodeURIComponent(asgId)}&`;
+
         const res = await apiFetch(url);
         if (res.success) {
           renderSubmissions(res.data);
@@ -223,16 +327,27 @@
     }
 
     const handleSearch = debounce((val) => {
-      loadSubmissions(val);
+      const courseVal = document.getElementById('course-filter').value;
+      const asgVal = document.getElementById('asg-filter').value;
+      loadSubmissions(val, courseVal, asgVal);
     }, 300);
+
+    function handleFilterChange() {
+      const searchVal = document.getElementById('search-input').value;
+      const courseVal = document.getElementById('course-filter').value;
+      const asgVal = document.getElementById('asg-filter').value;
+      loadSubmissions(searchVal, courseVal, asgVal);
+    }
 
     function openCreateModal() {
       document.getElementById('sub-modal-title').textContent = 'Record Submission';
       document.getElementById('sub-id').value = '';
       document.getElementById('std-select').value = '';
-      document.getElementById('asg-select').value = '';
+      document.getElementById('modal-course-filter').value = '';
+      renderModalAssignmentOptions('', '');
       document.getElementById('sub-date').value = new Date().toISOString().split('T')[0];
       document.getElementById('marks-obtained').value = '';
+      document.getElementById('asg-details-preview').style.display = 'none';
       document.getElementById('sub-submit-btn').textContent = 'Save Submission';
       document.getElementById('submission-modal').showModal();
     }
@@ -245,7 +360,13 @@
           document.getElementById('sub-modal-title').textContent = `Edit Submission #${s.submission_id}`;
           document.getElementById('sub-id').value = s.submission_id;
           document.getElementById('std-select').value = s.std_id;
-          document.getElementById('asg-select').value = s.asg_id;
+          
+          // Match assignment and course
+          const asg = assignments.find(a => a.asg_id === s.asg_id);
+          const courseId = asg ? asg.course_id : '';
+          document.getElementById('modal-course-filter').value = courseId;
+          renderModalAssignmentOptions(courseId, s.asg_id);
+
           document.getElementById('sub-date').value = s.submission_date ? new Date(s.submission_date).toISOString().split('T')[0] : '';
           document.getElementById('marks-obtained').value = s.marks_obtained !== null ? s.marks_obtained : '';
           document.getElementById('sub-submit-btn').textContent = 'Update Submission';
